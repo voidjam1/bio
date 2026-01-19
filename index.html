@@ -130,6 +130,95 @@
             谢谢你愿意来了解我！ps：界面里可以玩低脂小游戏。
         </footer>
     </div>
+<div id="game-controller-ui" style="position: fixed; bottom: 20px; right: 20px; z-index: 99999; background: rgba(255,255,255,0.8); pading: 10px; border-radius: 10px; border: 2px solid #333;">
+    <button id="btn-start" style="padding: 10px 15px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; margin-right: 5px;">开始掉落 🎮</button>
+    <button id="btn-stop" style="padding: 10px 15px; cursor: pointer; background: #f44336; color: white; border: none; border-radius: 5px;">停止/清屏 🛑</button>
+</div>
 
+<script>
+(function() {
+    // 配置信息
+    const IMG_URL = 'https://cdn-icons-png.flaticon.com/512/115/115804.png'; // 这里可以换成 T 酱喜欢的图标
+    const AUDIO_URL = 'https://www.soundjay.com/buttons/beep-01a.mp3';
+    
+    let isPlaying = false;
+    let timer = null;
+    let items = [];
+    const hitAudio = new Audio(AUDIO_URL);
+
+    // 核心点击检测函数
+    function checkOpacity(img, x, y) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        try {
+            ctx.drawImage(img, 0, 0);
+            return ctx.getImageData(x, y, 1, 1).data[3] > 10;
+        } catch (e) { return true; } // 跨域时默认允许点击
+    }
+
+    function spawn() {
+        if (!isPlaying) return;
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = IMG_URL;
+        img.style.cssText = `position:fixed; top:-100px; z-index:99998; width:60px; cursor:crosshair; user-select:none;`;
+        
+        const obj = {
+            el: img,
+            x: Math.random() * (window.innerWidth - 60),
+            y: -100,
+            speed: 2 + Math.random() * 4
+        };
+
+        img.onload = () => {
+            img.style.left = obj.x + 'px';
+            document.body.appendChild(img);
+            items.push(obj);
+        };
+
+        img.onmousedown = (e) => {
+            const r = img.getBoundingClientRect();
+            if (checkOpacity(img, (e.clientX - r.left)*(img.naturalWidth/r.width), (e.clientY - r.top)*(img.naturalHeight/r.height))) {
+                img.remove();
+                items = items.filter(i => i !== obj);
+            }
+        };
+    }
+
+    function frame() {
+        if (!isPlaying) return;
+        items.forEach(item => {
+            item.y += item.speed;
+            item.el.style.top = item.y + 'px';
+            if (item.y > window.innerHeight) {
+                hitAudio.play().catch(()=>{});
+                item.y = -100;
+                item.x = Math.random() * (window.innerWidth - 60);
+                item.el.style.left = item.x + 'px';
+            }
+        });
+        requestAnimationFrame(frame);
+    }
+
+    // 绑定按钮
+    document.getElementById('btn-start').onclick = () => {
+        if (isPlaying) return;
+        isPlaying = true;
+        frame();
+        timer = setInterval(spawn, 800);
+        document.getElementById('btn-start').innerText = '正在运行...✨';
+    };
+
+    document.getElementById('btn-stop').onclick = () => {
+        isPlaying = false;
+        clearInterval(timer);
+        items.forEach(i => i.el.remove());
+        items = [];
+        document.getElementById('btn-start').innerText = 钢管掉落mp3';
+    };
+})();
+</script>
 </body>
 </html>

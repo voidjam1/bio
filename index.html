@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>个人主页</title>
     <style>
+
         /* 🎨 颜色方案：在这里一键更改 */
         :root {
             --bg-color: #d6d6e6;          /* 全局背景 */
@@ -14,6 +15,13 @@
             --text-sub: #636e72;          /* 正文颜色 */
             --border-radius: 20px;
         }
+/* 游戏激活时禁止 body 滚动 */
+body.game-locked {
+    overflow: hidden !important;
+    touch-action: none; /* 关键：禁止所有手势操作 */
+    position: fixed;
+    width: 100%;
+}
 
         body {
             font-family: 'Inter', -apple-system, sans-serif;
@@ -102,6 +110,11 @@
             font-size: 0.8rem;
             color: #bdc3c7;
         }
+/* 把它加在你的 <style> 标签最后面 */
+body.game-locked {
+    overflow: hidden !important;
+    touch-action: none; /* 彻底禁用移动端的触摸滚动行为 */
+}
     </style>
 </head>
 <body>
@@ -139,11 +152,11 @@
     const CFG = {
         img: 'https://voidjam1.github.io/bio/gangguan.PNG', 
         luckImg: 'https://voidjam1.github.io/bio/gjg.png', 
-        luckRate: 0.01, // 500分之一概率，测试时可以改成 0.5
+        luckRate: 0.01, 
         audio: 'https://voidjam1.github.io/bio/gangguan.mp3',
-        visualSize: 80,
-        hitAreaPadding: 40,
-        speed: { min: 2, max: 7 },
+        visualSize: 90,
+        hitAreaPadding: 50,
+        speed: { min: 2, max: 10 },
         rate: 800
     };
 
@@ -156,12 +169,10 @@
         if(!active) return;
         const img = new Image();
         
-        // --- 逻辑判断：是否是幸运掉落 ---
         const isLucky = Math.random() < CFG.luckRate;
         img.src = isLucky ? CFG.luckImg : CFG.img;
         const currentSize = isLucky ? CFG.visualSize * 1.2 : CFG.visualSize;
         
-        // --- 样式设置 ---
         img.style.cssText = `
             position: fixed; 
             top: -${currentSize + CFG.hitAreaPadding}px; 
@@ -189,16 +200,9 @@
             pool.push(obj);
         };
 
-     // 绑定点击事件
         img.onmousedown = (e) => {
             e.stopPropagation(); 
-            
-            // --- 新增：幸运弹窗功能 ---
-            if (isLucky) {
-                // 你可以自定义这里的文字
-                alert("钢结构"); 
-            }
-
+            if (isLucky) { alert("钢结构"); }
             img.style.transform = 'scale(0)'; 
             img.style.opacity = '0';
             setTimeout(() => img.remove(), 100);
@@ -213,7 +217,6 @@
             item.el.style.top = item.y + 'px';
             if(item.y > window.innerHeight) {
                 snd.play().catch(()=>{});
-                // 重置位置
                 item.y = -(CFG.visualSize + CFG.hitAreaPadding);
                 item.el.style.left = Math.random()*85 + '%';
             }
@@ -221,17 +224,21 @@
         requestAnimationFrame(run);
     }
 
+    // 开始按钮逻辑
     document.getElementById('game-start').onclick = function() {
         if(active) return;
         active = true;
+        document.body.classList.add('game-locked');
         this.style.background = "rgba(76, 175, 80, 0.6)";
         this.innerText = "Running...✨";
         run();
         timer = setInterval(spawn, CFG.rate);
     };
 
+    // 停止按钮逻辑
     document.getElementById('game-stop').onclick = function() {
         active = false;
+        document.body.classList.remove('game-locked');
         clearInterval(timer);
         const startBtn = document.getElementById('game-start');
         startBtn.innerText = "钢管掉落";

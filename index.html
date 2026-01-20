@@ -139,9 +139,10 @@
     const CFG = {
         img: 'https://voidjam1.github.io/bio/gangguan.PNG', 
         audio: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
-        imgSize: 80,    // <--- 图像大小在这里修改！
-        speed: { min: 3, max: 6 }, // 稍微加快了速度，更有挑战性
-        rate: 800       // 生成频率
+        visualSize: 80,       // 看到的图片大小
+        hitAreaPadding: 40,    // 隐形的“力场”大小
+        speed: { min: 2, max: 4 }, // 稍微慢一点更好点
+        rate: 800
     };
 
     let active = false;
@@ -154,24 +155,27 @@
         const img = new Image();
         img.src = CFG.img;
         
-        // 样式优化：增加了背景占位感，方便点击
+// 1. 设置样式（加入了隐形点击区域）
         img.style.cssText = `
             position: fixed; 
-            top: -${CFG.imgSize}px; 
+            top: -${CFG.visualSize + CFG.hitAreaPadding}px; 
             left: ${Math.random()*85}%; 
-            width: ${CFG.imgSize}px; 
-            height: ${CFG.imgSize}px;
+            width: ${CFG.visualSize}px; 
+            height: ${CFG.visualSize}px;
+            padding: ${CFG.hitAreaPadding}px; 
             z-index: 999999; 
-            cursor: crosshair; 
+            cursor: pointer; 
             user-select: none;
-            filter: drop-shadow(0 0 5px rgba(255,255,255,0.5));
+            object-fit: contain;
+            background: transparent;
             transition: transform 0.1s, opacity 0.1s;
         `;
         
+        // 2. 初始数据对象
         const obj = { 
             el: img, 
-            y: -CFG.imgSize, 
-            s: CFG.speed.min + Math.random()*(CFG.speed.max-CFG.speed.min) 
+            y: -(CFG.visualSize + CFG.hitAreaPadding), 
+            s: CFG.speed.min + Math.random()*(CFG.speed.max - CFG.speed.min) 
         };
         
         img.onload = () => {

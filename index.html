@@ -138,10 +138,12 @@
 (function() {
     const CFG = {
         img: 'https://voidjam1.github.io/bio/gangguan.PNG', 
+        luckImg: 'https://voidjam1.github.io/bio/gjg.JPG', 
+        luckRate: 0.5, // 500分之一概率，测试时可以改成 0.5
         audio: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
-        visualSize: 80,       // 看到的图片大小
-        hitAreaPadding: 40,    // 隐形的“力场”大小
-        speed: { min: 2, max: 4 }, // 稍微慢一点更好点
+        visualSize: 80,
+        hitAreaPadding: 40,
+        speed: { min: 2, max: 4 },
         rate: 800
     };
 
@@ -153,28 +155,32 @@
     function spawn() {
         if(!active) return;
         const img = new Image();
-        img.src = CFG.img;
         
-// 1. 设置样式（加入了隐形点击区域）
+        // --- 逻辑判断：是否是幸运掉落 ---
+        const isLucky = Math.random() < CFG.luckRate;
+        img.src = isLucky ? CFG.luckImg : CFG.img;
+        const currentSize = isLucky ? CFG.visualSize * 1.2 : CFG.visualSize;
+        
+        // --- 样式设置 ---
         img.style.cssText = `
             position: fixed; 
-            top: -${CFG.visualSize + CFG.hitAreaPadding}px; 
-            left: ${Math.random()*85}%; 
-            width: ${CFG.visualSize}px; 
-            height: ${CFG.visualSize}px;
-            padding: ${CFG.hitAreaPadding}px; 
+            top: -${currentSize + CFG.hitAreaPadding}px; 
+            left: ${Math.random()*80}%; 
+            width: ${currentSize}px; 
+            height: ${currentSize}px;
+            padding: ${CFG.hitAreaPadding}px;
             z-index: 999999; 
             cursor: pointer; 
             user-select: none;
             object-fit: contain;
             background: transparent;
             transition: transform 0.1s, opacity 0.1s;
+            ${isLucky ? 'filter: drop-shadow(0 0 10px gold) brightness(1.2);' : ''}
         `;
         
-        // 2. 初始数据对象
         const obj = { 
             el: img, 
-            y: -(CFG.visualSize + CFG.hitAreaPadding), 
+            y: -(currentSize + CFG.hitAreaPadding), 
             s: CFG.speed.min + Math.random()*(CFG.speed.max - CFG.speed.min) 
         };
         
@@ -183,10 +189,17 @@
             pool.push(obj);
         };
 
-        // 改为简单点击判断
+     // 绑定点击事件
         img.onmousedown = (e) => {
-            e.stopPropagation(); // 防止触发网页其他元素的点击
-            img.style.transform = 'scale(0)'; // 缩小消失特效
+            e.stopPropagation(); 
+            
+            // --- 新增：幸运弹窗功能 ---
+            if (isLucky) {
+                // 你可以自定义这里的文字
+                alert("恭喜你刷到了"); 
+            }
+
+            img.style.transform = 'scale(0)'; 
             img.style.opacity = '0';
             setTimeout(() => img.remove(), 100);
             pool = pool.filter(i => i !== obj);
@@ -200,7 +213,8 @@
             item.el.style.top = item.y + 'px';
             if(item.y > window.innerHeight) {
                 snd.play().catch(()=>{});
-                item.y = -CFG.imgSize;
+                // 重置位置
+                item.y = -(CFG.visualSize + CFG.hitAreaPadding);
                 item.el.style.left = Math.random()*85 + '%';
             }
         });

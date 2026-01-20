@@ -129,94 +129,94 @@
         <footer class="footer">
             谢谢你愿意来了解我！ps：界面里可以玩低脂小游戏。
         </footer>
-    </div>
-<div id="game-controller-ui" style="position: fixed; bottom: 20px; right: 20px; z-index: 99999; background: rgba(255,255,255,0.8); pading: 10px; border-radius: 10px; border: 2px solid #333;">
-    <button id="btn-start" style="padding: 10px 15px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; margin-right: 5px;">钢管掉落mp3</button>
-    <button id="btn-stop" style="padding: 10px 15px; cursor: pointer; background: #f44336; color: white; border: none; border-radius: 5px;">停止/清屏 🛑</button>
+<div id="game-ui-root" style="position: fixed; top: 10px; right: 10px; z-index: 1000000; display: flex; gap: 8px;">
+    <button id="game-start" style="cursor:pointer; background:rgba(0,0,0,0.6); color:white; border:1px solid #fff; padding:5px 12px; border-radius:20px; font-size:12px; backdrop-filter:blur(5px);">Start Game 🎮</button>
+    <button id="game-stop" style="cursor:pointer; background:rgba(255,0,0,0.4); color:white; border:1px solid #fff; padding:5px 12px; border-radius:20px; font-size:12px; backdrop-filter:blur(5px);">Stop 🛑</button>
 </div>
 
 <script>
 (function() {
-    // 配置信息
-    const IMG_URL = 'https://voidjam1.github.io/bio/gangguan.PNG'; // 
-    const AUDIO_URL = 'https:/voidjam.github.io/bio/gangguan.mp3';
-    
-    let isPlaying = false;
-    let timer = null;
-    let items = [];
-    const hitAudio = new Audio(AUDIO_URL);
+    // === 配置：你可以随意修改这里 ===
+    const CFG = {
+        img: 'https://voidjam1.github.io/bio/gangguan.PNG', // 掉落物图片
+        audio: 'https://voidjam1.github.io/bio/gangguan.mp3', // 触底音效
+        speed: { min: 2, max: 5 },
+        rate: 1000 // 产生频率(ms)
+    };
 
-    // 核心点击检测函数
-    function checkOpacity(img, x, y) {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = img.width;
-        canvas.height = img.height;
+    let active = false;
+    let timer = null;
+    let pool = [];
+    const snd = new Audio(CFG.audio);
+
+    // 精确像素检测函数
+    function isSolid(e, img) {
         try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width; canvas.height = img.height;
             ctx.drawImage(img, 0, 0);
+            const r = img.getBoundingClientRect();
+            const x = (e.clientX - r.left) * (img.naturalWidth / r.width);
+            const y = (e.clientY - r.top) * (img.naturalHeight / r.height);
             return ctx.getImageData(x, y, 1, 1).data[3] > 10;
-        } catch (e) { return true; } // 跨域时默认允许点击
+        } catch(err) { return true; } // 跨域报错时降级为普通点击
     }
 
     function spawn() {
-        if (!isPlaying) return;
+        if(!active) return;
         const img = new Image();
-        img.crossOrigin = "Anonymous";
-        img.src = IMG_URL;
-        img.style.cssText = `position:fixed; top:-100px; z-index:99998; width:60px; cursor:crosshair; user-select:none;`;
+        img.crossOrigin = "Anonymous"; 
+        img.src = CFG.img;
+        img.style.cssText = `position:fixed; top:-100px; left:${Math.random()*90}%; width:50px; z-index:999999; cursor:pointer; user-select:none; transition: transform 0.1s;`;
         
-        const obj = {
-            el: img,
-            x: Math.random() * (window.innerWidth - 60),
-            y: -100,
-            speed: 2 + Math.random() * 4
-        };
-
+        const obj = { el: img, y: -100, s: CFG.speed.min + Math.random()*(CFG.speed.max-CFG.speed.min) };
+        
         img.onload = () => {
-            img.style.left = obj.x + 'px';
             document.body.appendChild(img);
-            items.push(obj);
+            pool.push(obj);
         };
 
         img.onmousedown = (e) => {
-            const r = img.getBoundingClientRect();
-            if (checkOpacity(img, (e.clientX - r.left)*(img.naturalWidth/r.width), (e.clientY - r.top)*(img.naturalHeight/r.height))) {
-                img.remove();
-                items = items.filter(i => i !== obj);
+            if(isSolid(e, img)) {
+                img.style.transform = 'scale(1.5)';
+                img.style.opacity = '0';
+                setTimeout(() => img.remove(), 100);
+                pool = pool.filter(i => i !== obj);
             }
         };
     }
 
-    function frame() {
-        if (!isPlaying) return;
-        items.forEach(item => {
-            item.y += item.speed;
+    function run() {
+        if(!active) return;
+        pool.forEach(item => {
+            item.y += item.s;
             item.el.style.top = item.y + 'px';
-            if (item.y > window.innerHeight) {
-                hitAudio.play().catch(()=>{});
+            // 触底逻辑
+            if(item.y > window.innerHeight) {
+                snd.play().catch(()=>{});
                 item.y = -100;
-                item.x = Math.random() * (window.innerWidth - 60);
-                item.el.style.left = item.x + 'px';
+                item.el.style.left = Math.random()*90 + '%';
             }
         });
-        requestAnimationFrame(frame);
+        requestAnimationFrame(run);
     }
 
-    // 绑定按钮
-    document.getElementById('btn-start').onclick = () => {
-        if (isPlaying) return;
-        isPlaying = true;
-        frame();
-        timer = setInterval(spawn, 800);
-        document.getElementById('btn-start').innerText = '正在运行...✨';
+    // 绑定按钮事件
+    document.getElementById('game-start').onclick = function() {
+        if(active) return;
+        active = true;
+        this.innerText = "Running...✨";
+        run();
+        timer = setInterval(spawn, CFG.rate);
     };
 
-    document.getElementById('btn-stop').onclick = () => {
-        isPlaying = false;
+    document.getElementById('game-stop').onclick = function() {
+        active = false;
         clearInterval(timer);
-        items.forEach(i => i.el.remove());
-        items = [];
-        document.getElementById('btn-start').innerText = 钢管掉落mp3';
+        document.getElementById('game-start').innerText = "Start Game 🎮";
+        pool.forEach(i => i.el.remove());
+        pool = [];
     };
 })();
 </script>

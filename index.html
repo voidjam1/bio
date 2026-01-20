@@ -156,26 +156,41 @@ body.game-locked {
         audio: 'https://voidjam1.github.io/bio/gangguan.mp3',
         visualSize: 90,
         hitAreaPadding: 50,
-        speed: { min: 2, max: 10 },
+        speed: { min: 4, max: 12 }, // 略微提速更有打击感
         rate: 800
     };
 
     let active = false;
     let timer = null;
     let pool = [];
-    const snd = new Audio(CFG.audio);
+    
+    // --- 优化：音频池，预加载 10 个实例备用 ---
+    const audioPool = Array.from({ length: 10 }, () => {
+        const a = new Audio(CFG.audio);
+        a.preload = "auto";
+        return a;
+    });
+    let poolIdx = 0;
+
+    function playSound() {
+        const s = audioPool[poolIdx];
+        s.currentTime = 0; // 强制回到开头
+        s.volume = 0.5;
+        s.playbackRate = 0.9 + Math.random() * 0.2;
+        s.play().catch(() => {});
+        poolIdx = (poolIdx + 1) % audioPool.length;
+    }
 
     function spawn() {
         if(!active) return;
         const img = new Image();
-        
         const isLucky = Math.random() < CFG.luckRate;
         img.src = isLucky ? CFG.luckImg : CFG.img;
         const currentSize = isLucky ? CFG.visualSize * 1.2 : CFG.visualSize;
         
         img.style.cssText = `
             position: fixed; 
-            top: -${currentSize + CFG.hitAreaPadding}px; 
+            top: -${currentSize + CFG.hitAreaPadding * 2}px; 
             left: ${Math.random()*80}%; 
             width: ${currentSize}px; 
             height: ${currentSize}px;
@@ -184,15 +199,16 @@ body.game-locked {
             cursor: pointer; 
             user-select: none;
             object-fit: contain;
-            background: transparent;
             transition: transform 0.1s, opacity 0.1s;
             ${isLucky ? 'filter: drop-shadow(0 0 10px gold) brightness(1.2);' : ''}
         `;
         
         const obj = { 
             el: img, 
-            y: -(currentSize + CFG.hitAreaPadding), 
-            s: CFG.speed.min + Math.random()*(CFG.speed.max - CFG.speed.min) 
+            y: -(currentSize + CFG.hitAreaPadding * 2), 
+            s: CFG.speed.min + Math.random()*(CFG.speed.max - CFG.speed.min),
+            h: currentSize,
+            played: false // 防止一根钢管触发多次声音
         };
         
         img.onload = () => {
@@ -212,30 +228,42 @@ body.game-locked {
 
     function run() {
         if(!active) return;
+        const vh = window.innerHeight;
+        
         pool.forEach(item => {
             item.y += item.s;
             item.el.style.top = item.y + 'px';
-            if(item.y > window.innerHeight) {
-                snd.play().catch(()=>{});
-                item.y = -(CFG.visualSize + CFG.hitAreaPadding);
-                item.el.style.left = Math.random()*85 + '%';
+
+            // --- 核心优化：提前判定 ---
+            // 当图片底部 (y + padding + visualSize) 接触到屏幕底部 (vh) 时
+            if (!item.played && (item.y + CFG.hitAreaPadding + item.h) >= vh) {
+                playSound();
+                item.played = true; // 标记已播放
+            }
+
+            // 彻底滑出屏幕后重置
+            if (item.y > vh + 100) {
+                item.y = -(item.h + CFG.hitAreaPadding * 2);
+                item.el.style.left = Math.random() * 85 + '%';
+                item.played = false; // 重置声音开关
             }
         });
         requestAnimationFrame(run);
     }
 
-    // 开始按钮逻辑
     document.getElementById('game-start').onclick = function() {
         if(active) return;
         active = true;
         document.body.classList.add('game-locked');
+        // 激活音频上下文（解决移动端首响需交互的问题）
+        audioPool[0].play().then(() => { audioPool[0].pause(); });
+        
         this.style.background = "rgba(76, 175, 80, 0.6)";
-        this.innerText = "Running...✨";
+        this.innerText = "点击钢管";
         run();
         timer = setInterval(spawn, CFG.rate);
     };
 
-    // 停止按钮逻辑
     document.getElementById('game-stop').onclick = function() {
         active = false;
         document.body.classList.remove('game-locked');

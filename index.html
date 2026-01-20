@@ -7,7 +7,7 @@
     <style>
         /* 🎨 颜色方案：在这里一键更改 */
         :root {
-            --bg-color: #9999cc;          /* 全局背景 */
+            --bg-color: #d6d6e6;          /* 全局背景 */
             --card-bg: #ffffff;           /* 卡片背景*/
             --accent-color: #666699;      /* 强调色*/
             --text-main: #ff9999;         /* 主标题颜色 */
@@ -129,19 +129,19 @@
         <footer class="footer">
             谢谢你愿意来了解我！ps：界面里可以玩低脂小游戏。
         </footer>
-<div id="game-ui-root" style="position: fixed; top: 10px; right: 10px; z-index: 1000000; display: flex; gap: 8px;">
-    <button id="game-start" style="cursor:pointer; background:rgba(0,0,0,0.6); color:white; border:1px solid #fff; padding:5px 12px; border-radius:20px; font-size:12px; backdrop-filter:blur(5px);">Start Game 🎮</button>
-    <button id="game-stop" style="cursor:pointer; background:rgba(255,0,0,0.4); color:white; border:1px solid #fff; padding:5px 12px; border-radius:20px; font-size:12px; backdrop-filter:blur(5px);">Stop 🛑</button>
+<div id="game-ui-root" style="position: fixed; top: 15px; right: 15px; z-index: 1000000; display: flex; gap: 10px;">
+    <button id="game-start" style="cursor:pointer; background:rgba(255,255,255,0.2); color:white; border:1px solid rgba(255,255,255,0.5); padding:8px 16px; border-radius:30px; font-size:14px; backdrop-filter:blur(10px); transition: all 0.3s;">钢管掉落</button>
+    <button id="game-stop" style="cursor:pointer; background:rgba(255,255,255,0.1); color:white; border:1px solid rgba(255,255,255,0.3); padding:8px 16px; border-radius:30px; font-size:14px; backdrop-filter:blur(10px);">停停停</button>
 </div>
 
 <script>
 (function() {
-    // === 配置：你可以随意修改这里 ===
     const CFG = {
-        img: 'https://voidjam1.github.io/bio/gangguan.PNG', // 掉落物图片
-        audio: 'https://voidjam1.github.io/bio/gangguan.mp3', // 触底音效
-        speed: { min: 2, max: 5 },
-        rate: 1000 // 产生频率(ms)
+        img: 'https://voidjam1.github.io/bio/.PNG', 
+        audio: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3',
+        imgSize: 80,    // <--- 图像大小在这里修改！
+        speed: { min: 3, max: 6 }, // 稍微加快了速度，更有挑战性
+        rate: 800       // 生成频率
     };
 
     let active = false;
@@ -149,41 +149,43 @@
     let pool = [];
     const snd = new Audio(CFG.audio);
 
-    // 精确像素检测函数
-    function isSolid(e, img) {
-        try {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = img.width; canvas.height = img.height;
-            ctx.drawImage(img, 0, 0);
-            const r = img.getBoundingClientRect();
-            const x = (e.clientX - r.left) * (img.naturalWidth / r.width);
-            const y = (e.clientY - r.top) * (img.naturalHeight / r.height);
-            return ctx.getImageData(x, y, 1, 1).data[3] > 10;
-        } catch(err) { return true; } // 跨域报错时降级为普通点击
-    }
-
     function spawn() {
         if(!active) return;
         const img = new Image();
-        img.crossOrigin = "Anonymous"; 
         img.src = CFG.img;
-        img.style.cssText = `position:fixed; top:-100px; left:${Math.random()*90}%; width:50px; z-index:999999; cursor:pointer; user-select:none; transition: transform 0.1s;`;
         
-        const obj = { el: img, y: -100, s: CFG.speed.min + Math.random()*(CFG.speed.max-CFG.speed.min) };
+        // 样式优化：增加了背景占位感，方便点击
+        img.style.cssText = `
+            position: fixed; 
+            top: -${CFG.imgSize}px; 
+            left: ${Math.random()*85}%; 
+            width: ${CFG.imgSize}px; 
+            height: ${CFG.imgSize}px;
+            z-index: 999999; 
+            cursor: crosshair; 
+            user-select: none;
+            filter: drop-shadow(0 0 5px rgba(255,255,255,0.5));
+            transition: transform 0.1s, opacity 0.1s;
+        `;
+        
+        const obj = { 
+            el: img, 
+            y: -CFG.imgSize, 
+            s: CFG.speed.min + Math.random()*(CFG.speed.max-CFG.speed.min) 
+        };
         
         img.onload = () => {
             document.body.appendChild(img);
             pool.push(obj);
         };
 
+        // 改为简单点击判断
         img.onmousedown = (e) => {
-            if(isSolid(e, img)) {
-                img.style.transform = 'scale(1.5)';
-                img.style.opacity = '0';
-                setTimeout(() => img.remove(), 100);
-                pool = pool.filter(i => i !== obj);
-            }
+            e.stopPropagation(); // 防止触发网页其他元素的点击
+            img.style.transform = 'scale(0)'; // 缩小消失特效
+            img.style.opacity = '0';
+            setTimeout(() => img.remove(), 100);
+            pool = pool.filter(i => i !== obj);
         };
     }
 
@@ -192,20 +194,19 @@
         pool.forEach(item => {
             item.y += item.s;
             item.el.style.top = item.y + 'px';
-            // 触底逻辑
             if(item.y > window.innerHeight) {
                 snd.play().catch(()=>{});
-                item.y = -100;
-                item.el.style.left = Math.random()*90 + '%';
+                item.y = -CFG.imgSize;
+                item.el.style.left = Math.random()*85 + '%';
             }
         });
         requestAnimationFrame(run);
     }
 
-    // 绑定按钮事件
     document.getElementById('game-start').onclick = function() {
         if(active) return;
         active = true;
+        this.style.background = "rgba(76, 175, 80, 0.6)";
         this.innerText = "Running...✨";
         run();
         timer = setInterval(spawn, CFG.rate);
@@ -214,7 +215,9 @@
     document.getElementById('game-stop').onclick = function() {
         active = false;
         clearInterval(timer);
-        document.getElementById('game-start').innerText = "Start Game 🎮";
+        const startBtn = document.getElementById('game-start');
+        startBtn.innerText = "钢管掉落";
+        startBtn.style.background = "rgba(255,255,255,0.2)";
         pool.forEach(i => i.el.remove());
         pool = [];
     };

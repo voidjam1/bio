@@ -143,139 +143,113 @@ body.game-locked {
             谢谢你愿意来了解我！
         </footer>
 <div id="game-ui-root" style="position: fixed; top: 15px; right: 15px; z-index: 1000000; display: flex; gap: 10px;">
-    <button id="game-start" style="cursor:pointer; background:rgba(255,255,255,0.2); color:white; border:1px solid rgba(255,255,255,0.5); padding:8px 16px; border-radius:30px; font-size:14px; backdrop-filter:blur(10px); transition: all 0.3s;">钢管掉落</button>
-    <button id="game-stop" style="cursor:pointer; background:rgba(255,255,255,0.1); color:white; border:1px solid rgba(255,255,255,0.3); padding:8px 16px; border-radius:30px; font-size:14px; backdrop-filter:blur(10px);">停停停</button>
-</div>
+        <button id="game-start" style="cursor:pointer; background:rgba(255,255,255,0.2); color:white; border:1px solid rgba(255,255,255,0.5); padding:8px 16px; border-radius:30px; font-size:14px; backdrop-filter:blur(10px); transition: all 0.3s;">钢管掉落</button>
+        <button id="game-stop" style="cursor:pointer; background:rgba(255,255,255,0.1); color:white; border:1px solid rgba(255,255,255,0.3); padding:8px 16px; border-radius:30px; font-size:14px; backdrop-filter:blur(10px);">停停停</button>
+    </div>
 
-<script>
-(function() {
-    const CFG = {
-        img: 'https://voidjam1.github.io/bio/image/gangguan.PNG', 
-        luckImg: 'https://voidjam1.github.io/bio/image/gjg.png', 
-        luckRate: 0.02, 
-        audio: 'https://voidjam1.github.io/bio/audio/gangguan.mp3',
-        visualSize: 90,
-        hitAreaPadding: 50,
-        speed: { min: 4, max: 12 }, // 略微提速更有打击感
-        rate: 800
-    };
+    <script>
+    (function() {
+        const CFG = {
+            img: 'https://voidjam1.github.io/bio/image/gangguan.PNG', 
+            luckImg: 'https://voidjam1.github.io/bio/image/gjg.png', 
+            luckRate: 0.02, 
+            audio: 'https://voidjam1.github.io/bio/audio/gangguan.mp3',
+            visualSize: 90,
+            hitAreaPadding: 50,
+            speed: { min: 4, max: 12 },
+            rate: 800
+        };
 
-    let active = false;
-    let timer = null;
-    let pool = [];
-    
-    // --- 优化：音频池，预加载 10 个实例备用 ---
-    const audioPool = Array.from({ length: 10 }, () => {
-        const a = new Audio(CFG.audio);
-        a.preload = "auto";
-        return a;
-    });
-    let poolIdx = 0;
+        let active = false, timer = null, pool = [], poolIdx = 0;
+        const audioPool = Array.from({ length: 10 }, () => {
+            const a = new Audio(CFG.audio);
+            a.preload = "auto";
+            return a;
+        });
 
-    function playSound() {
-        const s = audioPool[poolIdx];
-        s.currentTime = 0; // 强制回到开头
-        s.volume = 0.5;
-        s.playbackRate = 0.9 + Math.random() * 0.2;
-        s.play().catch(() => {});
-        poolIdx = (poolIdx + 1) % audioPool.length;
-    }
+        function playSound() {
+            const s = audioPool[poolIdx];
+            s.currentTime = 0;
+            s.volume = 0.5;
+            s.play().catch(() => {});
+            poolIdx = (poolIdx + 1) % audioPool.length;
+        }
 
-    function spawn() {
-        if(!active) return;
-        const img = new Image();
-        const isLucky = Math.random() < CFG.luckRate;
-        img.src = isLucky ? CFG.luckImg : CFG.img;
-        const currentSize = isLucky ? CFG.visualSize * 1.2 : CFG.visualSize;
-        
-        img.style.cssText = `
+        function spawn() {
+            if(!active) return;
+            const img = new Image();
+            const isLucky = Math.random() < CFG.luckRate;
+            img.src = isLucky ? CFG.luckImg : CFG.img;
+            const currentSize = isLucky ? CFG.visualSize * 1.2 : CFG.visualSize;
+            
+            img.style.cssText = `position:fixed; top:-200px; left:${Math.random()*80}%; width:${currentSize}px; z-index:999999; cursor:pointer; transition:transform 0.1s;`;
+            
+            const obj = { el: img, y: -200, s: CFG.speed.min + Math.random()*8, h: currentSize, played: false };
+            img.onload = () => { document.body.appendChild(img); pool.push(obj); };
+            img.onmousedown = (e) => { e.stopPropagation(); img.remove(); pool = pool.filter(i => i !== obj); };
+        }
+
+        function run() {
+            if(!active) return;
+            const vh = window.innerHeight;
+            pool.forEach(item => {
+                item.y += item.s;
+                item.el.style.top = item.y + 'px';
+                if (!item.played && (item.y + item.h) >= vh - 50) { playSound(); item.played = true; }
+                if (item.y > vh + 100) { item.y = -200; item.el.style.left = Math.random() * 85 + '%'; item.played = false; }
+            });
+            requestAnimationFrame(run);
+        }
+
+        document.getElementById('game-start').onclick = function() {
+            if(active) return; active = true;
+            document.body.classList.add('game-locked');
+            this.innerText = "点击钢管";
+            run(); timer = setInterval(spawn, CFG.rate);
+        };
+
+        document.getElementById('game-stop').onclick = function() {
+            active = false; document.body.classList.remove('game-locked');
+            clearInterval(timer);
+            document.getElementById('game-start').innerText = "钢管掉落";
+            pool.forEach(i => i.el.remove()); pool = [];
+        };
+    })();
+    </script>
+
+    <script>
+    (function() {
+        const catConfig = {
+            // 请确保你的 image 文件夹下有这个 gif，注意大小写！
+            gif: 'https://voidjam1.github.io/bio/image/oiiai.gif', 
+            audio: 'https://voidjam1.github.io/bio/audio/oiia.mp3'
+        };
+
+        const cat = document.createElement('img');
+        cat.src = catConfig.gif;
+        cat.style.cssText = `
             position: fixed; 
-            top: -${currentSize + CFG.hitAreaPadding * 2}px; 
-            left: ${Math.random()*80}%; 
-            width: ${currentSize}px; 
-            height: ${currentSize}px;
-            padding: ${CFG.hitAreaPadding}px;
-            z-index: 999999; 
+            bottom: 20px; 
+            left: 20px; 
+            width: 80px; 
+            z-index: 2000000; 
             cursor: pointer; 
-            user-select: none;
-            object-fit: contain;
-            transition: transform 0.1s, opacity 0.1s;
-            ${isLucky ? 'filter: drop-shadow(0 0 10px gold) brightness(1.2);' : ''}
+            filter: drop-shadow(0 0 5px rgba(0,0,0,0.2));
+            transition: transform 0.1s;
         `;
         
-        const obj = { 
-            el: img, 
-            y: -(currentSize + CFG.hitAreaPadding * 2), 
-            s: CFG.speed.min + Math.random()*(CFG.speed.max - CFG.speed.min),
-            h: currentSize,
-            played: false // 防止一根钢管触发多次声音
-        };
-        
-        img.onload = () => {
-            document.body.appendChild(img);
-            pool.push(obj);
+        const sound = new Audio(catConfig.audio);
+
+        cat.onclick = () => {
+            sound.currentTime = 0;
+            sound.play().catch(e => console.log("音频播放失败", e));
+            cat.style.transform = 'scale(1.3) rotate(10deg)';
+            setTimeout(() => cat.style.transform = 'scale(1) rotate(0deg)', 100);
         };
 
-        img.onmousedown = (e) => {
-            e.stopPropagation(); 
-            if (isLucky) { alert("钢结构"); }
-            img.style.transform = 'scale(0)'; 
-            img.style.opacity = '0';
-            setTimeout(() => img.remove(), 100);
-            pool = pool.filter(i => i !== obj);
-        };
-    }
-
-    function run() {
-        if(!active) return;
-        const vh = window.innerHeight;
-        
-        pool.forEach(item => {
-            item.y += item.s;
-            item.el.style.top = item.y + 'px';
-
-            // --- 核心优化：提前判定 ---
-            // 当图片底部 (y + padding + visualSize) 接触到屏幕底部 (vh) 时
-            if (!item.played && (item.y + CFG.hitAreaPadding + item.h) >= vh) {
-                playSound();
-                item.played = true; // 标记已播放
-            }
-
-            // 彻底滑出屏幕后重置
-            if (item.y > vh + 100) {
-                item.y = -(item.h + CFG.hitAreaPadding * 2);
-                item.el.style.left = Math.random() * 85 + '%';
-                item.played = false; // 重置声音开关
-            }
-        });
-        requestAnimationFrame(run);
-    }
-
-    document.getElementById('game-start').onclick = function() {
-        if(active) return;
-        active = true;
-        document.body.classList.add('game-locked');
-        // 激活音频上下文（解决移动端首响需交互的问题）
-        audioPool[0].play().then(() => { audioPool[0].pause(); });
-        
-        this.style.background = "rgba(76, 175, 80, 0.6)";
-        this.innerText = "点击钢管";
-        run();
-        timer = setInterval(spawn, CFG.rate);
-    };
-
-    document.getElementById('game-stop').onclick = function() {
-        active = false;
-        document.body.classList.remove('game-locked');
-        clearInterval(timer);
-        const startBtn = document.getElementById('game-start');
-        startBtn.innerText = "钢管掉落";
-        startBtn.style.background = "rgba(255,255,255,0.2)";
-        pool.forEach(i => i.el.remove());
-        pool = [];
-    };
-})();
-    <script src="cat-plugin.js" defer></script>
-</script>
+        document.body.appendChild(cat);
+        console.log("猫咪已就绪！");
+    })();
+    </script>
 </body>
 </html>
